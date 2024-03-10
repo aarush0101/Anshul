@@ -37,7 +37,7 @@ def _configure_logging(name):
 
 class YourMom(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=cm.keys['Prefix'], tree_cls=MainTree, description="Main client for anshul's YourMom bot",intents=discord.Intents.all())
+        super().__init__(command_prefix=cm("Prefix"), tree_cls=MainTree, description="Main client for anshul's YourMom bot",intents=discord.Intents.all())
     
     async def on_ready(self):
         logger.info("Starting")
