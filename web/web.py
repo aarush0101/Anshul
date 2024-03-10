@@ -1,30 +1,35 @@
-import flask
-from flask import send_from_directory
+from flask import send_from_directory, Flask
 import os
-import sys
-from threading import Thread
+import asyncio
 
-app = flask.Flask(__name__)
-
+app = Flask(__name__)
 
 @app.route('/')
-@app.route('/<path:filename>')
-def index(filename=None):
-    if filename:
-        # Serve static files directly
-        return send_from_directory(os.path.abspath(os.path.dirname(__file__)), filename)
+def index():
+    return send_from_directory(os.path.dirname(__file__), 'index.html')
 
-    html_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'index.html')
-    with open(html_file_path, 'r') as file:
-        html_content = file.read()
-    return html_content
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.dirname(__file__), 'favicon.ico')
+
+@app.route('/style.css')
+def css():
+    return send_from_directory(os.path.dirname(__file__), 'style.css')
+
+@app.route('/img.png')
+def img():
+    return send_from_directory(os.path.dirname(__file__), 'img.png')
+
+
 
 def stop():
     os._exit(0)
 
-def run():
-    app.run(host='localhost', port=8080)
+async def run():
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, app.run, 'localhost', 8080)
 
 def keep_alive():
-    t = Thread(target=run)
-    t.start()
+    asyncio.run(run())
+
+keep_alive()

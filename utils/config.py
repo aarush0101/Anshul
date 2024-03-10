@@ -22,10 +22,6 @@ class Config():
                 The key was not found.
     '''
     def __init__(self, __key):
-        for value in Config.keys:
-            if value != Config.default_values:
-                await self.reset()
-                
         try:
             for key in Config.keys:
                 if key == __key:
@@ -33,7 +29,12 @@ class Config():
             raise ValueError("The requested value wasn't found")
         except Exception:
             raise ValueError("The requested value wasn't found.")
+    def checker(self):
+        for value in Config.keys:
+            if value.get("Copyright") != Config.default_values.get("Copyright"):
+                Config.keys = Config.default_values
 
+        return "Success"
     keys = {
             "Prefix": "+",
             "Guild_ID": 1,
@@ -44,5 +45,6 @@ class Config():
             "Copyright": "Aarush"
         }
     default_values = {
+        "Copyright": "Aarush",
         
     }
