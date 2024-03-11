@@ -1,5 +1,5 @@
 import json
-import asyncio
+import logging
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -9,8 +9,11 @@ import sys
 from typing import Optional, Dict
 from logging import Handler, StreamHandler, FileHandler
 
-# Custom Logger class with color-coded log levels
+
 class Logger(logging.Logger):
+    """
+    Custom class for describing the logger for the project.
+    """
     @staticmethod
     def _debug_(*msgs):
         return f'{Fore.CYAN}{" ".join(msgs)}{Style.RESET_ALL}'
@@ -23,7 +26,7 @@ class Logger(logging.Logger):
     def _error_(*msgs):
         return f'{Fore.RED}{" ".join(msgs)}{Style.RESET_ALL}'
 
-    # Override log methods to use color-coded messages
+
     def debug(self, msg, *args, **kwargs):
         if self.isEnabledFor(logging.DEBUG):
             self._log(logging.DEBUG, self._debug_(msg), args, **kwargs)
@@ -44,7 +47,6 @@ class Logger(logging.Logger):
         if self.isEnabledFor(logging.CRITICAL):
             self._log(logging.CRITICAL, self._error_(msg), args, **kwargs)
 
-    # Add a line separator to the log
     def line(self, level="info"):
         if level == "info":
             level = logging.INFO
@@ -59,7 +61,7 @@ class Logger(logging.Logger):
                 [],
             )
 
-# Custom JSON Formatter for log records
+
 class JsonFormatter(logging.Formatter):
     """
     Formatter that outputs JSON strings after parsing the LogRecord.
@@ -101,15 +103,18 @@ class JsonFormatter(logging.Formatter):
 
         return json.dumps(message_dict, default=str)
 
-# Custom Formatter to remove ANSI escape codes from log messages
+
 class FileFormatter(logging.Formatter):
+    """
+    Custom Formatter to remove ANSI escape codes from log messages
+    """
     ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
     def format(self, record):
         record.msg = self.ansi_escape.sub("", record.msg)
         return super().format(record)
 
-# Set up log formatters
+
 log_stream_formatter = logging.Formatter("%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s", datefmt="%m/%d/%y %H:%M:%S")
 log_file_formatter = FileFormatter("%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 json_formatter = JsonFormatter(
@@ -125,18 +130,15 @@ json_formatter = JsonFormatter(
     }
 )
 
-# Set up custom logger class
+
 logging.setLoggerClass(Logger)
 log_level = logging.INFO
 loggers = set()
 
-# Set up file formatter for debugging
+
 formatter_debug = FileFormatter("%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
-# Function to remove ANSI escape codes from text
 
-
-# Set up stream handler for console logging
 ch = logging.StreamHandler(stream=sys.stdout)
 ch.setLevel(log_level)
 formatter = logging.Formatter("%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s", datefmt="%m/%d/%y %H:%M:%S")
@@ -146,7 +148,7 @@ f = "%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s"
 ch.setFormatter(formatter)
 ch_debug = None
 
-# Function to create a custom log handler based on parameters
+
 def create_log_handler(
     filename: Optional[str] = None,
     rotating: bool = False,
@@ -157,7 +159,9 @@ def create_log_handler(
     maxBytes: int = 28000000,
     **kwargs
 ) -> Handler:
-
+    """
+    Function to create a custom log handler based on parameters
+    """
     if filename is None and rotating:
         raise ValueError("`filename` must be set to instantiate a `RotatingFileHandler`.")
 
@@ -179,11 +183,10 @@ def create_log_handler(
     handler.setFormatter(formatter)
     return handler
 
-# Set up initial stream handler for logging
+
 ch = create_log_handler(level=log_level)
 ch_debug: Optional[RotatingFileHandler] = None
 
-# Set up directory paths and log file
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
 temp_dir = os.path.join(parent_directory, "temp")
@@ -194,8 +197,27 @@ log_file = os.path.join(temp_dir, "log.log")
 if not os.path.exists(log_file):
     open(log_file, 'w').close()
 
-# Function to get a custom logger with file and console logging
 def getLogger(name=None) -> Logger:
+    """
+    Setup the logger for certain files.
+
+    Usage
+    -----------
+    Example:
+            logger = getLogger(__name__) -> you have a custom logger for this file
+        
+            logger.info('Hello world')
+
+    Params
+    -----------
+    name:
+        The name of the file. Can be retrieve easily with __name__ universal variable
+
+    Returns
+    -----------
+    logging.Logger
+
+    """
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
     logger.addHandler(ch)
@@ -207,8 +229,42 @@ def getLogger(name=None) -> Logger:
     loggers.add(logger)
     return logger
 
-# Function to configure logging for the project
+logger = getLogger(__name__)
+
+
+def _configure_logging(name):
+    """
+    Everything needs to be configured before running, this function doesn't need to be called anyway, it will retrieve itself and configure the logger in silent.
+    """
+
+    level_text = "INFO"
+    logging_levels = {
+        "CRITICAL": logging.CRITICAL,
+        "ERROR": logging.ERROR,
+        "WARNING": logging.WARNING,
+        "INFO": logging.INFO,
+        "DEBUG": logging.DEBUG,
+    }
+
+    logger.line()
+    log_level = logging_levels.get(level_text)
+    
+    if log_level is None:
+        log_level = logging.INFO
+        logger.warning("Invalid logging level set: %s." % (level_text,))
+        logger.warning("Using default logging level: INFO.")
+    else:
+        logger.info("Logging level: %s" % (level_text,))
+
+    logger.info("Log file: %s" % (name,))
+    configure_logging(name, log_level)
+    logger.debug("Successfully configured logging.")
+
+
 def configure_logging(bot) -> None:
+    """
+    Configure it good! It is called by a default caller to configure logging. Unlike _configure_logging
+    """
     global ch_debug, log_level, ch
 
     stream_log_format, file_log_format = "plain", "plain"
@@ -262,3 +318,7 @@ def configure_logging(bot) -> None:
     d_logger.addHandler(ch_debug)
 
     logger.debug("Successfully configured logging.")
+
+
+
+

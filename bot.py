@@ -1,6 +1,7 @@
 __version__ = '2.0'
 
 import os
+import time
 import discord
 from discord.ext import commands
 from git import Optional
@@ -14,29 +15,7 @@ from typing import Union
 
 logger = getLogger(__name__)
 
-def _configure_logging(name):
-    level_text = "INFO"
-    logging_levels = {
-        "CRITICAL": logging.CRITICAL,
-        "ERROR": logging.ERROR,
-        "WARNING": logging.WARNING,
-        "INFO": logging.INFO,
-        "DEBUG": logging.DEBUG,
-    }
 
-    logger.line()
-    log_level = logging_levels.get(level_text)
-    
-    if log_level is None:
-        log_level = logging.INFO
-        logger.warning("Invalid logging level set: %s." % (level_text,))
-        logger.warning("Using default logging level: INFO.")
-    else:
-        logger.info("Logging level: %s" % (level_text,))
-
-    logger.info("Log file: %s" % (name,))
-    configure_logging(name, log_level)
-    logger.debug("Successfully configured logging.")
 
 
         
@@ -60,7 +39,7 @@ class YourMom(commands.Bot):
         """
         return self.config("Copyright")
     @property
-    def logging_(self) -> in:
+    def logging_(self) -> int:
         """
         Return log channel ID for logging
         """
@@ -158,6 +137,12 @@ class YourMom(commands.Bot):
         """
         return await self.get_channel(id) or await self.fetch_channel(id)
         
+    async def get_guild_(self, id: int) -> discord.Guild:
+        """
+        Similar to get_guild of discord module but this one tries to get the guild object even if its not found in cache
+        """
+        return await self.get_guild(id) or await self.fetch_guild(id)
+    
     async def checker(self) -> bool:
         """
         Checks if everything is perfect before starting, this is called in on_ready event.
@@ -177,10 +162,34 @@ class YourMom(commands.Bot):
         return invite_link
     
     @property
-    def guild_invite(self):
+    async def guild_invite(self):
+        """
+        Get the invite for first channel in the main guild.
+        """
+        guild_id = self.config("Guild_ID")
+        guild = await self.get_guild_(int(guild_id))
+        for channel in guild.channels:
+            if isinstance(channel, discord.TextChannel): 
+                invite = await channel.create_invite(max_age=0, max_uses=0, temporary=False)
+                break  
+        else:
+            return None  
+    
+        return invite 
+    
+    @property
+    async def uptime_st(self) -> None:
+        """
+        Once called, it sets uptime. Subtract it when the appropriate value is required.
+        """
+        self.start_time = time.time()
 
-
-
+    @property
+    def uptime(self) -> float:
+        """
+        Should return the time string which was inherited from uptime_st?
+        """
+        return self.start_time
 
 
     async def on_ready(self):
