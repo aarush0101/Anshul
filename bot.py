@@ -1,7 +1,9 @@
-__version__ = '2.0'
+__version__ = '2.0d'
 
 import os
 import time
+import types
+import typing
 import discord
 from discord.ext import commands
 from git import Optional
@@ -16,24 +18,21 @@ from typing import Union
 logger = getLogger(__name__)
 
 
-
-
-        
-
 class YourMom(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=cm("Prefix"), description="Main client for anshul's YourMom bot",intents=discord.Intents.all())
         self.started = False
         self.config = cm
-
+        # self.guild = self.get_guild_(id=int(self.config("Guild_ID")))
+        self.token = self.config("Token")
     @property
-    def owners(self):
+    def owners(self) -> list:
         """
         Return list of bot owner ID(s)
         """
         return self.config("Owners")
     @property
-    def copyright(self):
+    def copyright(self) -> str:
         """
         Return the author of this project
         """
@@ -104,15 +103,26 @@ class YourMom(commands.Bot):
         dir = self.cogs_dir
         
         for cog in dir:
-            if cog in self.loaded_cog:
-                continue
-            logger.debug("Loading %s cog..." % (dir,))
+            logger.debug("Loading %s cog..." % (cog,))
             try:
-                await self.load_extension(dir)
-                logger.debug("Loaded cog: %s" % (dir,))
+                await self.load_extension(cog)
+                logger.debug("Loaded cog: %s" % (cog,))
             except Exception:
-                logger.error("Unable to load cog: %s" % (dir,))
-        logger.debug("dbg")
+                logger.error("Unable to load cog: %s" % (cog,))
+        logger.info("Successfully loaded all the commands")
+
+    @property
+    def get_guild_icon(self, guild: typing.Optional[discord.Guild], *, size: typing.Optional[int] = None) -> str:
+        """
+        Returns main guild icon
+        """
+        if guild is None:
+            guild = self.guild
+        if guild.icon is None:
+            return "https://cdn.discordapp.com/embed/avatars/0.png"
+        if size is None:
+            return guild.icon.url
+        return guild.icon.with_size(size).url
 
     async def get_owners(self) -> str:
         """
@@ -147,8 +157,32 @@ class YourMom(commands.Bot):
         """
         Checks if everything is perfect before starting, this is called in on_ready event.
         """
-        pass
-        # TODO: MAKE IT RN
+        properties = [
+            self.owners,
+            self.copyright,
+            self.logging_,
+            self.gifted_to,
+            self.hosting_method,
+            self.cogs_dir,
+            self.get_guild_icon(self.guild),
+            self.start_time,
+            self.version
+        ]
+        if not all(properties):
+            logger.debug(f"Some of the properties is None: {', '.join(str(property_) for property_ in properties if not property_) or True}")
+            return False
+
+        # Check if all other properties that require async calls are valid
+        async_properties = [
+            await self.servers(),
+            await self.retrieve_emoji(),
+            await self.get_owners()
+        ]
+        if not all(async_properties):
+            logger.debug(f"Some of the async properties are false: {', '.join(str(property_) for property_ in async_properties if not property_) or True}")
+            return False
+
+        return True
     
     @property
     def invite(self) -> str:
@@ -161,8 +195,7 @@ class YourMom(commands.Bot):
         invite_link = discord.utils.oauth_url(client_id=self.user.id, permissions=permissions)
         return invite_link
     
-    @property
-    async def guild_invite(self):
+    async def guild_invite(self) -> discord.Invite:
         """
         Get the invite for first channel in the main guild.
         """
@@ -185,41 +218,155 @@ class YourMom(commands.Bot):
         self.start_time = time.time()
 
     @property
-    def uptime(self) -> float:
+    def uptime(self) -> str:
         """
         Should return the time string which was inherited from uptime_st?
         """
-        return self.start_time
+        now = discord.utils.utcnow()
+        delta = now - self.start_time
+        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+        fmt = "{h}h {m}m {s}s"
+        if days:
+            fmt = "{d}d " + fmt
+
+        return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+    
+    @property
+    def version(self) -> str:
+        """
+        Returns the current version of the software
+        """
+        return __version__
+    
+
+    async def servers(self) -> int:
+        """
+        Returns the count of servers the bot is in
+        """
+        await self.wait_until_ready()
+        servers = len(self.guilds)
+        return servers
+    
+
+    async def retrieve_emoji(self) -> bool:
+        """
+        Returns whether the emojis in self.config are accessible by the bot or not
+        """
+        self.success_emoji_id = self.config("Success_Emoji")
+        self.error_emoji_id = self.config("Error_Emoji")
+
+        try:
+            self.success_emoji = self.get_emoji(self.success_emoji_id)
+            self.error_emoji = self.get_emoji(self.error_emoji_id)
+            return True
+        except (Exception, discord.NotFound):
+            return False
+
+    @property
+    def activity(self) -> dict:
+        """
+        Return a dict containing all the information about the activity
+        """
+        msg = self.config("Activity_Message")
+        type_ = self.config("Activity_Type")
+        state = self.config("Activity_State")
+        kwargs = {
+            "message": msg,
+            "type": type_,
+            "state": state
+        }
+        return kwargs
+    
+    async def set_activity(self) -> str:
+        if self.config("Activity") != True:
+           return "activity is disabled"
+        try:
+            k = self.activity
+            act = discord.Activity(type=k.get("type"), name=k.get("msg"))
+            await self.change_presence(activity=act, status=k.get("state"))
+            return "success"
+        except Exception as e:
+            return "error: %s" % (e,)
+           
 
 
-    async def on_ready(self):
-        logger.info("Starting")
-        # await check()
+    async def on_ready(self) -> None:
+        """
+        Bot startup, sets the bot's uptime
+        """
+
+        # wait for checker function to check all the stuff and populate cache
+        checked = await self.checker()
+        if checked:
+            logger.line()
+            logger.info("                         _           _ ")
+            logger.info("         /\             | |         | |")
+            logger.info("  ___   /  \   _ __  ___| |__  _   _| |")
+            logger.info(" / _ \ / /\ \ | '_ \/ __| '_ \| | | | |")
+            logger.info("| (_) / ____ \| | | \__ \ | | | |_| | |")
+            logger.info(" \___/_/    \_\_| |_|___/_| |_|\__,_|_|")
+            logger.line()
+            logger.info(f"Version: {self.version}")
+            if "d" in self.version:
+                logger.info("Stable Version: False")
+            logger.info("Stable Version: True")
+            logger.warning("You are using a development version, it may contain some errors and bugs")
+            logger.info(f"Authors: {self.copyright}")
+            logger.info(f"Licensed to: {self.gifted_to}")
+            logger.line()
+            logger.info(f"Guild: {self.guild.name}")
+            logger.info(f"Logging channel: {self.get_channel_(id=int(self.logging_))}")
+            logger.info("Currently in %s guilds" % (await self.servers(),))
+
+            act = self.set_activity()
+            if act.lower() in ["activity is disabled"]:
+                logger.warning("The activity is disabled in config, skipping...")
+            elif act.lower() in ["success"]:
+                logger.info("Successfully set activity")
+            elif act.lower() in ["error"]:
+                logger.warning("Failed to set activity. Please contact your administrator")
+            else:
+                logger.warning(f"Unable to load activity: {act}")
+                raise RuntimeError(act)
+            logger.info("Loading commands...")
+            self.load_extension()
+
+            logger.line()
+            logger.info("Successfully logged in")
+            self.started = True
+        else:
+            logger.info("Some of the properties are false as per checked by checker function, please check `temp/log.log` for the properties that were invalid.")
+            raise RuntimeError("Invalid properties")
+       
 
     def run(self):
+
         async def runner():
             async with self:
                 self.session = ClientSession(loop=self.loop)
-
                 try:
                     await self.start(self.token)
-                    
                 except discord.PrivilegedIntentsRequired:
-                    logger.critical("Privileged intents are not explicitly granted in the discord developers dashboard.")
-
+                    logger.critical(
+                        "Privileged intents are not explicitly granted in the discord developers dashboard."
+                    )
                 except discord.LoginFailure:
                     logger.critical("Invalid token")
-
-                except Exception as e:
-                    logger.critical("Fatal exception\n%s" % (e,))
+                except Exception:
+                    logger.critical("Fatal exception", exc_info=True)
                 finally:
+                    if self.session:
+                        await self.session.close()
                     if not self.is_closed():
                         await self.close()
+
         async def _cancel_tasks():
             async with self:
                 task_retriever = asyncio.all_tasks
                 loop = self.loop
-                tasks = {t for t in task_retriever() if not t.done() and t.get_coro() != cancel_tasks}
+                tasks = {t for t in task_retriever() if not t.done() and t.get_coro() != cancel_tasks_coro}
 
                 if not tasks:
                     return
@@ -236,14 +383,13 @@ class YourMom(commands.Bot):
                         if task.exception() is not None:
                             loop.call_exception_handler(
                                 {
-                                    "message": "Unhandled exception during shutdown.",
+                                    "message": "Unhandled exception during Client.run shutdown.",
                                     "exception": task.exception(),
                                     "task": task,
                                 }
                             )
                     except (asyncio.InvalidStateError, asyncio.CancelledError):
                         pass
-
         try:
             asyncio.run(runner(), debug=bool(os.getenv("DEBUG_ASYNCIO")))
         except (KeyboardInterrupt, SystemExit):
@@ -252,10 +398,11 @@ class YourMom(commands.Bot):
             logger.info("Cleaning up tasks.")
 
             try:
-                cancel_tasks = _cancel_tasks()
-                asyncio.run(cancel_tasks)
+                cancel_tasks_coro = _cancel_tasks()
+                asyncio.run(cancel_tasks_coro)
             finally:
                 logger.info("Closing the event loop.")
+
 
 
 
@@ -270,3 +417,4 @@ def main():
         logger.critical("Invalid token, get a valid one first.")
         raise RuntimeError("Invalid Token")
     
+main()

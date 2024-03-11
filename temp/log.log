@@ -1,0 +1,12 @@
+2024-03-11 22:07:45 discord.client[295] - WARNING: PyNaCl is not installed, voice will NOT be supported
+2024-03-11 22:07:45 __main__[358] - CRITICAL: [31mFatal exception[0m
+Traceback (most recent call last):
+  File "D:\main\your mom\bot.py", line 350, in runner
+    await self.start(self.token)
+  File "C:\Users\riyan\AppData\Local\Programs\Python\Python310\lib\site-packages\discord\client.py", line 777, in start
+    await self.login(token)
+  File "C:\Users\riyan\AppData\Local\Programs\Python\Python310\lib\site-packages\discord\client.py", line 609, in login
+    raise TypeError(f'expected token to be a str, received {token.__class__.__name__} instead')
+TypeError: expected token to be a str, received Config instead
+2024-03-11 22:07:45 __main__[398] - INFO: [32mCleaning up tasks.[0m
+2024-03-11 22:07:45 __main__[404] - INFO: [32mClosing the event loop.[0m
