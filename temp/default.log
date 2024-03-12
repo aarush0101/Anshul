@@ -1,0 +1,26 @@
+2024-03-12 17:16:34 discord.client[295] - WARNING: PyNaCl is not installed, voice will NOT be supported
+2024-03-12 17:16:38 __main__[297] - INFO: [30m[1m-------------------------[0m
+2024-03-12 17:16:38 __main__[298] - INFO: [31m                         _           _ [0m
+2024-03-12 17:16:38 __main__[299] - INFO: [31m         /\             | |         | |[0m
+2024-03-12 17:16:38 __main__[300] - INFO: [31m  ___   /  \   _ __  ___| |__  _   _| |[0m
+2024-03-12 17:16:38 __main__[301] - INFO: [31m / _ \ / /\ \ | '_ \/ __| '_ \| | | | |[0m
+2024-03-12 17:16:38 __main__[302] - INFO: [31m| (_) / ____ \| | | \__ \ | | | |_| | |[0m
+2024-03-12 17:16:38 __main__[303] - INFO: [31m \___/_/    \_\_| |_|___/_| |_|\__,_|_|[0m
+2024-03-12 17:16:38 __main__[304] - INFO: [30m[1m-------------------------[0m
+2024-03-12 17:16:38 __main__[305] - INFO: [31mVersion: 2.0d[0m
+2024-03-12 17:16:38 __main__[307] - INFO: [31mStable Version: False[0m
+2024-03-12 17:16:38 __main__[308] - WARNING: [31mYou are using a development version, it may contain some errors and bugs[0m
+2024-03-12 17:16:38 __main__[312] - INFO: [31mAuthors: Aarush[0m
+2024-03-12 17:16:38 __main__[313] - INFO: [31mLicensed to: oAnshul[0m
+2024-03-12 17:16:38 __main__[314] - INFO: [30m[1m-------------------------[0m
+2024-03-12 17:16:38 __main__[317] - INFO: [31mGuild: Emojis[0m
+2024-03-12 17:16:38 __main__[318] - INFO: [31mLogging channel: general[0m
+2024-03-12 17:16:38 __main__[319] - INFO: [31mCurrently in 1 guilds[0m
+2024-03-12 17:16:38 __main__[325] - INFO: [31mSuccessfully set activity[0m
+2024-03-12 17:16:38 __main__[331] - INFO: [31mLoading commands...[0m
+2024-03-12 17:16:38 __main__[111] - INFO: [31mSuccessfully loaded all the commands[0m
+2024-03-12 17:16:38 __main__[334] - INFO: [30m[1m-------------------------[0m
+2024-03-12 17:16:38 __main__[335] - INFO: [31mSuccessfully logged in[0m
+2024-03-12 17:16:42 __main__[394] - CRITICAL: [31mReceived signal to terminate bot and event loop.[0m
+2024-03-12 17:16:42 __main__[396] - CRITICAL: [31mCleaning up tasks.[0m
+2024-03-12 17:16:42 __main__[402] - CRITICAL: [31mClosing the event loop.[0m

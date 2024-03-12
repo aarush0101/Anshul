@@ -20,7 +20,7 @@ class Logger(logging.Logger):
 
     @staticmethod
     def _info_(*msgs):
-        return f'{Fore.GREEN}{" ".join(msgs)}{Style.RESET_ALL}'
+        return f'{Fore.RED}{" ".join(msgs)}{Style.RESET_ALL}'
 
     @staticmethod
     def _error_(*msgs):

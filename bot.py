@@ -2,13 +2,11 @@ __version__ = '2.0d'
 
 import os
 import time
-import types
 import typing
 import discord
 from discord.ext import commands
 from git import Optional
-from utils.logger import getLogger, configure_logging
-import logging
+from utils.logger import getLogger
 from utils.config import Config as cm
 import dotenv
 import asyncio
@@ -20,43 +18,45 @@ logger = getLogger(__name__)
 
 class YourMom(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=cm("Prefix"), description="Main client for anshul's YourMom bot",intents=discord.Intents.all())
+        super().__init__(command_prefix=cm("Prefix").value(), description="Main client for anshul's YourMom bot",intents=discord.Intents.all())
         self.started = False
         self.config = cm
-        # self.guild = self.get_guild_(id=int(self.config("Guild_ID")))
-        self.token = self.config("Token")
+        self.guild = None
+        self.token = self.config("Token").value
+        self.start_time = discord.utils.utcnow()
+        self.guild_invite_ = None
     @property
     def owners(self) -> list:
         """
         Return list of bot owner ID(s)
         """
-        return self.config("Owners")
+        return self.config("Owners").value
     @property
     def copyright(self) -> str:
         """
         Return the author of this project
         """
-        return self.config("Copyright")
+        return self.config("Copyright").value
     @property
     def logging_(self) -> int:
         """
         Return log channel ID for logging
         """
-        return self.config("Log_Channel_ID")
+        return self.config("Log_Channel_ID").value
     
     @property
     def gifted_to(self) -> str:
         """
         Returns to whom is this licensed to
         """
-        return self.config("Owner_Name")
+        return self.config("Owner_Name").value
 
     @property
     def hosting_method(self) -> str:
         """
         Returns on what is this currently running
         """
-        if 'REPLIT_DB_URL' in dotenv.dotenv_values:
+        if 'REPLIT_DB_URL' in os.environ:
             return "REPLIT:("
         import platform
         system = platform.system().lower()
@@ -90,32 +90,33 @@ class YourMom(commands.Bot):
         """
         Returns the cog directory where commands are located
         """
-        root = os.path.join(os.path.dirname(__file__), 'bot.py')
-        cogs_dir = os.path.join(root, 'commands')
+        cogs_dir = os.path.join(os.path.dirname(__file__), 'commands')
         return cogs_dir
     
     
-    async def load_extension(self) -> None:
+    async def load_extension_(self) -> None:
         """
         Load the commands into the bot for usage.
         """
         await self.wait_until_ready()
         dir = self.cogs_dir
-        
-        for cog in dir:
-            logger.debug("Loading %s cog..." % (cog,))
-            try:
-                await self.load_extension(cog)
-                logger.debug("Loaded cog: %s" % (cog,))
-            except Exception:
-                logger.error("Unable to load cog: %s" % (cog,))
+        for filename in os.listdir(dir):
+            if filename.endswith('.py'):
+                cog = f'commands.{filename[:-3]}'  
+                logger.debug("Loading %s cog..." % (cog,))
+                try:                
+                    await self.load_extension(cog)
+                    logger.debug("Loaded cog: %s" % (cog,))
+                except Exception:
+                    logger.error("Unable to load cog: %s" % (cog,))
         logger.info("Successfully loaded all the commands")
 
-    @property
+
     def get_guild_icon(self, guild: typing.Optional[discord.Guild], *, size: typing.Optional[int] = None) -> str:
         """
         Returns main guild icon
         """
+
         if guild is None:
             guild = self.guild
         if guild.icon is None:
@@ -145,13 +146,13 @@ class YourMom(commands.Bot):
         """
         Similar to get_channel of discord module but this tries to get the channel from the cache and if not found, try to get from API calls.
         """
-        return await self.get_channel(id) or await self.fetch_channel(id)
+        return self.get_channel(id) or await self.fetch_channel(id)
         
     async def get_guild_(self, id: int) -> discord.Guild:
         """
         Similar to get_guild of discord module but this one tries to get the guild object even if its not found in cache
         """
-        return await self.get_guild(id) or await self.fetch_guild(id)
+        return self.get_guild(id) or await self.fetch_guild(id)
     
     async def checker(self) -> bool:
         """
@@ -164,7 +165,6 @@ class YourMom(commands.Bot):
             self.gifted_to,
             self.hosting_method,
             self.cogs_dir,
-            self.get_guild_icon(self.guild),
             self.start_time,
             self.version
         ]
@@ -173,14 +173,6 @@ class YourMom(commands.Bot):
             return False
 
         # Check if all other properties that require async calls are valid
-        async_properties = [
-            await self.servers(),
-            await self.retrieve_emoji(),
-            await self.get_owners()
-        ]
-        if not all(async_properties):
-            logger.debug(f"Some of the async properties are false: {', '.join(str(property_) for property_ in async_properties if not property_) or True}")
-            return False
 
         return True
     
@@ -199,11 +191,12 @@ class YourMom(commands.Bot):
         """
         Get the invite for first channel in the main guild.
         """
-        guild_id = self.config("Guild_ID")
+        guild_id = self.config("Guild_ID").value
         guild = await self.get_guild_(int(guild_id))
         for channel in guild.channels:
             if isinstance(channel, discord.TextChannel): 
                 invite = await channel.create_invite(max_age=0, max_uses=0, temporary=False)
+                self.guild_invite_ = invite
                 break  
         else:
             return None  
@@ -254,8 +247,8 @@ class YourMom(commands.Bot):
         """
         Returns whether the emojis in self.config are accessible by the bot or not
         """
-        self.success_emoji_id = self.config("Success_Emoji")
-        self.error_emoji_id = self.config("Error_Emoji")
+        self.success_emoji_id = self.config("Success_Emoji").value
+        self.error_emoji_id = self.config("Error_Emoji").value
 
         try:
             self.success_emoji = self.get_emoji(self.success_emoji_id)
@@ -269,9 +262,9 @@ class YourMom(commands.Bot):
         """
         Return a dict containing all the information about the activity
         """
-        msg = self.config("Activity_Message")
-        type_ = self.config("Activity_Type")
-        state = self.config("Activity_State")
+        msg = self.config("Activity_Message").value
+        type_ = self.config("Activity_Type").value
+        state = self.config("Activity_State").value
         kwargs = {
             "message": msg,
             "type": type_,
@@ -280,11 +273,14 @@ class YourMom(commands.Bot):
         return kwargs
     
     async def set_activity(self) -> str:
-        if self.config("Activity") != True:
+        """
+        Sets bot's activity for runtime
+        """
+        if self.config("Activity").value != True:
            return "activity is disabled"
         try:
             k = self.activity
-            act = discord.Activity(type=k.get("type"), name=k.get("msg"))
+            act = discord.Activity(type=k.get("type"), name=k.get("message"))
             await self.change_presence(activity=act, status=k.get("state"))
             return "success"
         except Exception as e:
@@ -310,17 +306,21 @@ class YourMom(commands.Bot):
             logger.line()
             logger.info(f"Version: {self.version}")
             if "d" in self.version:
-                logger.info("Stable Version: False")
-            logger.info("Stable Version: True")
-            logger.warning("You are using a development version, it may contain some errors and bugs")
+                logger.warning("Stable Version: False")
+                logger.warning("You are using a development version, it may contain some errors and bugs")
+            else:
+                logger.info("Stable Version: True")
+
             logger.info(f"Authors: {self.copyright}")
             logger.info(f"Licensed to: {self.gifted_to}")
             logger.line()
+            guild = await self.get_guild_(self.config("Guild_ID").value)
+            self.guild = guild
             logger.info(f"Guild: {self.guild.name}")
-            logger.info(f"Logging channel: {self.get_channel_(id=int(self.logging_))}")
+            logger.info(f"Logging channel: {await self.get_channel_(id=int(self.logging_))}")
             logger.info("Currently in %s guilds" % (await self.servers(),))
-
-            act = self.set_activity()
+            await self.guild_invite()
+            act = await self.set_activity()
             if act.lower() in ["activity is disabled"]:
                 logger.warning("The activity is disabled in config, skipping...")
             elif act.lower() in ["success"]:
@@ -331,15 +331,19 @@ class YourMom(commands.Bot):
                 logger.warning(f"Unable to load activity: {act}")
                 raise RuntimeError(act)
             logger.info("Loading commands...")
-            self.load_extension()
+            await self.load_extension_()
 
             logger.line()
             logger.info("Successfully logged in")
             self.started = True
+            print(self.start_time)
+            print(self.uptime)
+            await asyncio.sleep(5)
+            print(self.uptime)
         else:
             logger.info("Some of the properties are false as per checked by checker function, please check `temp/log.log` for the properties that were invalid.")
             raise RuntimeError("Invalid properties")
-       
+            
 
     def run(self):
 
@@ -366,7 +370,7 @@ class YourMom(commands.Bot):
             async with self:
                 task_retriever = asyncio.all_tasks
                 loop = self.loop
-                tasks = {t for t in task_retriever() if not t.done() and t.get_coro() != cancel_tasks_coro}
+                tasks = {t for t in task_retriever() if not t.done() and t.get_coro() != cancel_tasks}
 
                 if not tasks:
                     return
@@ -393,15 +397,15 @@ class YourMom(commands.Bot):
         try:
             asyncio.run(runner(), debug=bool(os.getenv("DEBUG_ASYNCIO")))
         except (KeyboardInterrupt, SystemExit):
-            logger.info("Received signal to terminate bot and event loop.")
+            logger.critical("Received signal to terminate bot and event loop.")
         finally:
-            logger.info("Cleaning up tasks.")
+            logger.critical("Cleaning up tasks.")
 
             try:
-                cancel_tasks_coro = _cancel_tasks()
-                asyncio.run(cancel_tasks_coro)
+                cancel_tasks = _cancel_tasks()
+                asyncio.run(cancel_tasks)
             finally:
-                logger.info("Closing the event loop.")
+                logger.critical("Closing the event loop.")
 
 
 

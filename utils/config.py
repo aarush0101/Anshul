@@ -1,9 +1,9 @@
 from utils.logger import getLogger
-
+import discord
 
 logger = getLogger(__name__)
 
-class Config():
+class Config:
     '''
     Get a *bot* specific value form this config.
         
@@ -31,17 +31,19 @@ class Config():
             "Success_Emoji": "<:checkMark:1172627738268541038>",
             "Error_Emoji": "<:noEntry:1172627159244873790>",
             "Owners": [1025341204235292724, 906543610269401148, 930119015785959474],
-            "Log_channel_ID": 12,
-            "Token": "MTIxNjc4Mjc3OTE1MzUxODYyMg.GEPVT3.x2qdHHAzxsEEEFhY7xEoSmsG7OFd1_yUrQR2Q8"
+            "Token": "MTIxNjc4Mjc3OTE1MzUxODYyMg.GH60cy.D-j9hEtZQAPhZB1-X3-1q4Me2oOqpHN0WFsBcY",
+            "Log_Channel_ID": 1165921227290972200,
+            "Activity": True,
+            "Activity_Message": "hello",
+            "Activity_Type": discord.ActivityType.listening,
+            "Activity_State": discord.Status.idle,
+            "Error_Color": discord.Color.red
         }
 
-    def __init__(self, __key):
-        """
-        Return the config entire(if found)
-        """
-        try:
-            self.keys.get(__key)
-        except Exception:
+    def __init__(self, key):
+        if key in self.keys:
+            self.value = self.keys[key]
+        else:
             raise ValueError("The requested value wasn't found.")
     def __update__(self, __item, __key):
         """
